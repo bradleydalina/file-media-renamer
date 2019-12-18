@@ -243,16 +243,16 @@ class WP_PLUGIN_MAIN_12132019{
        if ( isset( $_REQUEST['attachments'][ $attachment_id ]['filename'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['filename'])) ) {
            $filename = self::sanitize($_REQUEST['attachments'][ $attachment_id ]['filename']);
            $ext = self::path($attachment_id)->extension;
-           $filename = wp_unique_filename( self::path($attachment_id, false)->basedir, strtolower($filename.'.'.$ext) );
+           $filename = wp_unique_filename( self::path($attachment_id)->basepath, strtolower($filename.'.'.$ext) , null);
            $filename = pathinfo($filename)['filename'];
-
-           if(rename(self::path($attachment_id, true)->basepath, self::path($attachment_id, false, $filename )->basepath.'.'.$ext )){
+           $fullname = sanitize_file_name($filename.'.'.$ext);
+           if(rename(self::path($attachment_id, true)->basepath, self::path($attachment_id, false, $fullname )->basepath )){
 
                if ( wp_attachment_is_image( $attachment_id ) ) {
                    $metadata = get_post_meta($attachment_id, '_wp_attachment_metadata', true);
                    if($metadata){
                        if($metadata['file']){
-                           $metadata['file']= self::path($attachment_id, false, $filename )->basedir.'.'.$ext;
+                           $metadata['file']= self::path($attachment_id, false, $fullname )->basedir;
                        }
                        if($metadata['sizes']){
                            foreach($metadata['sizes'] as $index => $key){
@@ -264,22 +264,23 @@ class WP_PLUGIN_MAIN_12132019{
                    }
                }
 
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $filename)->basedir.'.'.$ext );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $filename)->basedir.'.'.$ext );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $filename)->basedir.'.'.$ext );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $filename)->basedir.'.'.$ext );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $filename)->basedir.'.'.$ext );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $filename)->basedir.'.'.$ext );
+               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $fullname)->basedir );
+               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $fullname)->basedir );
+               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $fullname)->basedir );
+               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $fullname)->basedir );
+               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $fullname)->basedir );
+               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, %s, %s);", self::path($attachment_id, true)->basedir, self::path($attachment_id, false, $fullname)->basedir );
 
                if(isset($metadata)){
                    update_post_meta( $attachment_id, '_wp_attachment_metadata', $metadata );
-                   update_post_meta( $attachment_id, '_wp_attached_file', self::path($attachment_id, false, $filename )->basedir.'.'.$ext );
+                   update_post_meta( $attachment_id, '_wp_attached_file', self::path($attachment_id, false, $fullname )->basedir );
                }
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.guid = %s WHERE t1.ID='{$attachment_id}';", self::path($attachment_id, false, $filename )->baseurl.'.'.$ext );
+               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.guid = %s WHERE t1.ID='{$attachment_id}';", self::path($attachment_id, false, $fullname )->baseurl );
            }
        }
        if ( isset( $_REQUEST['attachments'][ $attachment_id ]['postname'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['postname'])) ) {
            $postname = self::sanitize($_REQUEST['attachments'][ $attachment_id ]['postname']);
+           $postname = wp_unique_post_slug($postname, $attachment_id, 'publish', 'attachment', get_post($attachment_id)->post_parent);
            $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_name = %s WHERE t1.ID={$attachment_id};", $postname);
        }
        dbDelta( $sql_bulk_update );
@@ -298,16 +299,17 @@ class WP_PLUGIN_MAIN_12132019{
         if ( isset( $_REQUEST['attachments'][ $post_id ]['filename'] ) && !empty(trim($_REQUEST['attachments'][ $post_id ]['filename'])) ) {
             $filename = self::sanitize($_REQUEST['attachments'][ $post_id ]['filename']);
             $ext = self::path($post_id)->extension;
-            $filename = wp_unique_filename( self::path($post_id, false)->basedir, strtolower($filename.'.'.$ext) );
+            $filename = wp_unique_filename( self::path($post_id)->basepath, strtolower($filename.'.'.$ext) );
             $filename = pathinfo($filename)['filename'];
+            $fullname = sanitize_file_name($filename.'.'.$ext);
 
-            if(rename(self::path($post_id, true)->basepath, self::path($post_id, false, $filename )->basepath.'.'.$ext )){
+            if(rename(self::path($post_id, true)->basepath, self::path($post_id, false, $fullname )->basepath )){
 
                 if ( wp_attachment_is_image( $post_id ) ) {
                     $metadata = get_post_meta($post_id, '_wp_attachment_metadata', true);
                     if($metadata){
                         if($metadata['file']){
-                            $metadata['file']= self::path($post_id, false, $filename )->basedir.'.'.$ext;
+                            $metadata['file']= self::path($post_id, false, $fullname )->basedir;
                         }
                         if($metadata['sizes']){
                             foreach($metadata['sizes'] as $index => $key){
@@ -319,22 +321,23 @@ class WP_PLUGIN_MAIN_12132019{
                     }
                 }
 
-                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
-                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
-                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
-                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
-                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
-                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $fullname)->basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $fullname)->basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $fullname)->basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $fullname)->basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $fullname)->basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $fullname)->basedir );
 
                 if(isset($metadata)){
                     update_post_meta( $post_id, '_wp_attachment_metadata', $metadata );
-                    update_post_meta( $post_id, '_wp_attached_file', self::path($post_id, false, $filename )->basedir.'.'.$ext );
+                    update_post_meta( $post_id, '_wp_attached_file', self::path($post_id, false, $fullname )->basedir );
                 }
-                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.guid = %s WHERE t1.ID='{$post_id}';", self::path($post_id, false, $filename )->baseurl.'.'.$ext );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.guid = %s WHERE t1.ID='{$post_id}';", self::path($post_id, false, $fullname )->baseurl);
             }
         }
         if ( isset( $_REQUEST['attachments'][ $post_id ]['postname'] ) && !empty(trim($_REQUEST['attachments'][ $post_id ]['postname'])) ) {
             $postname = self::sanitize($_REQUEST['attachments'][ $post_id ]['postname']);
+            $postname = wp_unique_post_slug($postname, $post_id, 'publish', 'attachment', get_post($post_id)->post_parent);
             $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_name = %s WHERE t1.ID={$post_id};", $postname);
         }
         dbDelta( $sql_bulk_update );
