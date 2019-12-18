@@ -1,0 +1,51 @@
+
+## Data Must be Sanitized, Escaped, and Validated
+
+This was my missed, thank you for the catch.
+
+> before:
+file-media-renamer-master/file-media-renamer.php:296: $post_id = $_POST['id'];
+
+> after:
+file-media-renamer-master/file-media-renamer.php:296: $post_id = intval($_POST['id']);
+
+## Unsafe SQL calls
+
+I used the $wpdb->prepare function to sanitized the query values as per wordpress standard, though this values where already sanitized by this function -> public static function sanitize($filename) {} before added into the query
+
+    FILENAME > if ( isset( $_REQUEST['attachments'][ $post_id ]['filename'] ) && !empty(trim($_REQUEST['attachments'][ $post_id ]['filename'])) ) {
+        >  $filename = self::sanitize($_REQUEST['attachments'][ $post_id ]['filename']);
+
+    POSTNAME > if ( isset( $_REQUEST['attachments'][ $post_id ]['postname'] ) && !empty(trim($_REQUEST['attachments'][ $post_id ]['postname'])) ) {
+        >  $postname = self::sanitize($_REQUEST['attachments'][ $post_id ]['postname']);
+
+        public static function sanitize($filename) {
+           /**
+            * This function sanitized and standadized the filename of an image
+            * @param  string filename or postname
+            * @return string
+            */
+           $filename = str_replace("%", "", $filename);
+           $filename = preg_replace( '%[^a-z0-9- ]%smiU', ' ', $filename );
+           $filename = preg_replace( '%\s*[-_\s\%]+\s*%', ' ',  $filename );
+           $filename = preg_replace( '%\s{1,}+%', '-', $filename );
+           /* Trim spaces in the start and end of string */
+           return trim( $filename );
+        }
+
+
+> before:
+$sql_bulk_update .= "UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, '".self::path($post_id, true)->basedir."', '".self::path($post_id, false, $filename)->basedir."');";
+$sql_bulk_update .= "UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, '".self::path($post_id, true)->basedir."', '".self::path($post_id, false, $filename)->basedir."');";
+$sql_bulk_update .= "UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, '".self::path($post_id, true)->basedir."', '".self::path($post_id, false, $filename)->basedir."');";
+$sql_bulk_update .= "UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, '".self::path($post_id, true)->basedir."', '".self::path($post_id, false, $filename)->basedir."');";
+$sql_bulk_update .= "UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, '".self::path($post_id, true)->basedir."', '".self::path($post_id, false, $filename)->basedir."');";
+$sql_bulk_update .= "UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, '".self::path($post_id, true)->basedir."', '".self::path($post_id, false, $filename)->basedir."');";
+
+> after:
+$sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
+$sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
+$sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
+$sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
+$sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
+$sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, %s, %s);", self::path($post_id, true)->basedir, self::path($post_id, false, $filename)->basedir.'.'.$ext );
