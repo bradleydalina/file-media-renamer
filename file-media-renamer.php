@@ -243,7 +243,7 @@ class WP_PLUGIN_MAIN_12132019{
        if ( isset( $_REQUEST['attachments'][ $attachment_id ]['filename'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['filename'])) ) {
            $filename = self::sanitize($_REQUEST['attachments'][ $attachment_id ]['filename']);
            $ext = self::path($attachment_id)->extension;
-           $filename = wp_unique_filename( self::path($attachment_id)->basepath, strtolower($filename.'.'.$ext) , null);
+           $filename = wp_unique_filename( self::path($attachment_id)->basedir, strtolower($filename.'.'.$ext));
            $filename = pathinfo($filename)['filename'];
            $fullname = sanitize_file_name($filename.'.'.$ext);
            if(rename(self::path($attachment_id, true)->basepath, self::path($attachment_id, false, $fullname )->basepath )){
@@ -299,7 +299,7 @@ class WP_PLUGIN_MAIN_12132019{
         if ( isset( $_REQUEST['attachments'][ $post_id ]['filename'] ) && !empty(trim($_REQUEST['attachments'][ $post_id ]['filename'])) ) {
             $filename = self::sanitize($_REQUEST['attachments'][ $post_id ]['filename']);
             $ext = self::path($post_id)->extension;
-            $filename = wp_unique_filename( self::path($post_id)->basepath, strtolower($filename.'.'.$ext) );
+            $filename = wp_unique_filename( self::path($post_id)->basedir, strtolower($filename.'.'.$ext) );
             $filename = pathinfo($filename)['filename'];
             $fullname = sanitize_file_name($filename.'.'.$ext);
 
