@@ -262,6 +262,9 @@ class File_Media_Renamer{
         * @param  integer $attachment_id
         * @return void
         */
+        //Check user capability
+        self::auth();
+
         global $wpdb;
         $sql_bulk_update ='';
 
@@ -314,14 +317,19 @@ class File_Media_Renamer{
        return;
     }
     public function save_with_ajax() {
+
         /**
          * Saving the attachment data from custom field within media overlay (via ajax)
          * @param  integer $post_id $_POST['id']
          * @return void
          */
+         //Check user capability
+         self::auth();
+
          global $wpdb;
          $sql_bulk_update ='';
          $attachment_id = intval($_POST['id']);
+
 
          if ( isset( $_REQUEST['attachments'][ $attachment_id ]['filename'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['filename'])) ) {
              $ext = self::get('',$attachment_id)->extension;
