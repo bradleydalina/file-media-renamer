@@ -252,7 +252,7 @@ class File_Media_Renamer{
            'input'  => 'html',
            'html' => '<input required class="FileMediaRenamer-postname" type="text" id="attachments-'.$post->ID.'-postname" name="attachments['.$post->ID.'][postname]" value="'.($post_name ? $post_name : '').'" /> ',
            'field_id'=>'postname',
-           'helps' => '<a class="paypal-donation" style="display: inline-block;" rel="referrer" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=QX8K5XTVBGV42&amp;source=url"><img style="border:solid 1px #ddd;" src="'.FileMediaRenamer::get('btn_donateCC_LG.gif')->abspath.'" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button"></a>'
+           'helps' => '<a class="paypal-donation" style="display: inline-block;" rel="referrer" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=QX8K5XTVBGV42&amp;source=url"><img style="border:solid 1px #ddd;" src="'.self::get('btn_donateCC_LG.gif')->abspath.'" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button"></a>'
        );
        return $form_fields;
     }
