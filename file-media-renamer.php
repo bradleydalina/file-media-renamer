@@ -26,7 +26,7 @@ if(!function_exists('get_plugin_data')) require_once( ABSPATH . 'wp-admin/includ
 require_once( ABSPATH . "wp-includes/pluggable.php" );
 require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
-class FRM_12132019{
+class File_Media_Renamer{
     /**
     * Plugin main class
     * @since 1.0
@@ -126,14 +126,14 @@ class FRM_12132019{
                     w.onload= function(){
                         if (wp.media) {
                                 wp.media.view.Modal.prototype.on('open', function(data) {
-                                    const frm12132019_filename = d.querySelector('input.frm12132019-filename');
-                                    const frm12132019_postname = d.querySelector('input.frm12132019-postname');
+                                    const FileMediaRenamer_filename = d.querySelector('input.FileMediaRenamer-filename');
+                                    const FileMediaRenamer_postname = d.querySelector('input.FileMediaRenamer-postname');
 
-                                    if(frm12132019_filename){
-                                        input_filter(frm12132019_filename);
+                                    if(FileMediaRenamer_filename){
+                                        input_filter(FileMediaRenamer_filename);
                                     }
-                                    if(frm12132019_postname){
-                                        input_filter(frm12132019_postname);
+                                    if(FileMediaRenamer_postname){
+                                        input_filter(FileMediaRenamer_postname);
                                     }
                                     function input_filter($input_field){
                                         if(!$input_field){
@@ -240,7 +240,7 @@ class FRM_12132019{
            'label' => __( 'Filename*' ),
            //'helps' => '<a href="'.$post->guid.'" target="_blank">'.$post->guid.'</a>',
            'input' => 'html',
-           'html' => '<input required class="frm12132019-filename" type="text" id="attachments-'.$post->ID.'-filename" name="attachments['.$post->ID.'][filename]" value="'.($filename ? $filename : '').'" /> ',
+           'html' => '<input required class="FileMediaRenamer-filename" type="text" id="attachments-'.$post->ID.'-filename" name="attachments['.$post->ID.'][filename]" value="'.($filename ? $filename : '').'" /> ',
            //'input'  => 'text',
            'field_id'=>'filename'
        );
@@ -250,9 +250,9 @@ class FRM_12132019{
            'value' => $post_name ? $post_name : '',
            'label' => __( 'Slug URL/Post name*' ),
            'input'  => 'html',
-           'html' => '<input required class="frm12132019-postname" type="text" id="attachments-'.$post->ID.'-postname" name="attachments['.$post->ID.'][postname]" value="'.($post_name ? $post_name : '').'" /> ',
+           'html' => '<input required class="FileMediaRenamer-postname" type="text" id="attachments-'.$post->ID.'-postname" name="attachments['.$post->ID.'][postname]" value="'.($post_name ? $post_name : '').'" /> ',
            'field_id'=>'postname',
-           'helps' => '<a class="paypal-donation" style="display: inline-block;" rel="referrer" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=QX8K5XTVBGV42&amp;source=url"><img style="border:solid 1px #ddd;" src="'.frm12132019::get('btn_donateCC_LG.gif')->abspath.'" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button"></a>'
+           'helps' => '<a class="paypal-donation" style="display: inline-block;" rel="referrer" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=QX8K5XTVBGV42&amp;source=url"><img style="border:solid 1px #ddd;" src="'.FileMediaRenamer::get('btn_donateCC_LG.gif')->abspath.'" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button"></a>'
        );
        return $form_fields;
     }
@@ -411,5 +411,5 @@ class FRM_12132019{
     }
 }
 
-class_alias('FRM_12132019','frm12132019');
-$frm12132019  = new frm12132019();
+class_alias('File_Media_Renamer','FileMediaRenamer');
+$FileMediaRenamer  = new FileMediaRenamer();
