@@ -37,7 +37,7 @@ class File_Media_Renamer{
         */
         $this->init();
     }
-    public static function get($string='', $id=0, $file=false){
+    public static function get($string=''){
         /**
         * Plugin initialization
         * @param  string url part string
@@ -53,7 +53,7 @@ class File_Media_Renamer{
         $domain = pathinfo(__FILE__)['filename'];
         $defination->domain = $domain.(!empty(trim($string))) ? '_'.$string : '';
         $defination->prefix = function(){
-            foreach(explode('-', 'media-filename-renamer') as $index){
+            foreach(explode('-', 'file-media-renamer') as $index){
 			    $prefix.= substr($index, 0, 1);
                 return $prefix.'_';
             }
@@ -73,29 +73,6 @@ class File_Media_Renamer{
         $defination->uri = $info['PluginURI'];
         $defination->version = $info['Version'];
         $defination->description = $info['Description'];
-
-        if($id > 0){
-            $path = get_post_meta( $id , '_wp_attached_file', true );
-            $basedir =trailingslashit(  pathinfo($path)['dirname']);
-            $defination->extension = pathinfo($path)['extension'];
-            $defination->filename = pathinfo($path)['filename'];
-            $defination->basename = pathinfo($path)['basename'];
-
-            if($file){
-                $string = $defination->basename;
-            }
-
-            $defination->basedir = $basedir.$string;
-            $defination->baseurl = wp_upload_dir()['baseurl'].'/'.$basedir.$string;
-            $defination->basepath = realpath(wp_upload_dir()['basedir'].'/'.$basedir).DIRECTORY_SEPARATOR.$string;
-        }else{
-            $defination->extension = '';
-            $defination->filename = '';
-            $defination->basename = '';
-            $defination->basedir = '';
-            $defination->baseurl = '';
-            $defination->basepath = '';
-        }
         return $defination;
     }
     public function init(){
@@ -105,7 +82,7 @@ class File_Media_Renamer{
         */
         add_action( 'admin_footer', array($this,"jscripts"), 100, true );
         add_filter( 'attachment_fields_to_edit', array($this,'fields'), null, 2 );
-        add_action( 'edit_attachment', array($this,'save_no_ajax') );
+        //add_action( 'edit_attachment', array($this,'save_no_ajax') );
         add_action( 'wp_ajax_save-attachment-compat', array($this, 'save_with_ajax'), 0, 1 );
         add_filter( 'attachment_fields_to_save', array($this,'prepare'), 20, 2 );
         add_action( 'admin_head', array($this, 'csstyle') );
@@ -234,7 +211,7 @@ class File_Media_Renamer{
        * @param  WP_POST $post
        * @return array
        */
-       $filename = self::get('',$post->ID)->filename;
+       $filename = pathinfo(get_post_meta( $post->ID , '_wp_attached_file', true ))['filename'];
        $form_fields['filename'] = array(
            'value' => $filename ? $filename : '',
            'label' => __( 'Filename*' ),
@@ -262,122 +239,118 @@ class File_Media_Renamer{
         * @param  integer $attachment_id
         * @return void
         */
-        //Check user capability
-        self::auth();
-
-        global $wpdb;
-        $sql_bulk_update ='';
-
-       if ( isset( $_REQUEST['attachments'][ $attachment_id ]['filename'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['filename'])) ) {
-           $ext = self::get('',$attachment_id)->extension;
-           $filename = $_REQUEST['attachments'][ $attachment_id ]['filename'].'.'.$ext;
-           $filename = self::sanitize($filename);
-           $name = pathinfo($filename)['filename'];
-           $filename = wp_unique_filename( self::get('',$attachment_id)->basepath, $filename );
-
-           if(rename(self::get('',$attachment_id, true)->basepath, self::get($filename , $attachment_id, false )->basepath )){
-               if ( wp_attachment_is_image( $attachment_id ) ) {
-                   $metadata = get_post_meta($attachment_id, '_wp_attachment_metadata', true);
-                   if($metadata){
-                       if($metadata['file']){
-                           $metadata['file']= self::get($filename, $attachment_id, false )->basedir;
-                       }
-                       if($metadata['sizes']){
-                           foreach($metadata['sizes'] as $index => $key){
-                               $new_file_name = str_ireplace(self::get('',$attachment_id)->filename, $name,  $key['file']);
-                               $metadata['sizes'][$index]['file']= $new_file_name;
-                               @rename( self::get($key['file'], $attachment_id, false)->basepath, self::get( $new_file_name, $attachment_id, false)->basepath );
-                           }
-                       }
-                   }
-               }
-
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-
-               if(isset($metadata)){
-                   update_post_meta( $attachment_id, '_wp_attachment_metadata', $metadata );
-                   update_post_meta( $attachment_id, '_wp_attached_file', self::get( $filename, $attachment_id, false )->basedir );
-               }
-               $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.guid = %s WHERE t1.ID='{$attachment_id}';", self::get( $filename, $attachment_id, false )->baseurl );
-           }
-       }
-       if ( isset( $_REQUEST['attachments'][ $attachment_id ]['postname'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['postname'])) ) {
-           $ext = self::get('',$attachment_id)->extension;
-           $postname = $_REQUEST['attachments'][ $attachment_id ]['postname'].'.'.$ext;
-           $postname = self::sanitize($postname, false);
-           $postname = wp_unique_post_slug($postname, $attachment_id, 'publish', 'attachment', get_post($attachment_id)->post_parent);
-           $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_name = %s WHERE t1.ID={$attachment_id};", $postname);
-       }
-       dbDelta( $sql_bulk_update );
-       return;
+        self::do_rename($attachment_id);
+        self::do_update_slug($attachment_id);
+        return;
     }
     public function save_with_ajax() {
-
         /**
          * Saving the attachment data from custom field within media overlay (via ajax)
          * @param  integer $post_id $_POST['id']
          * @return void
          */
+         $attachment_id = intval($_POST['id']);
+         self::do_rename($attachment_id);
+         self::do_update_slug($attachment_id);
+         return;
+    }
+    public static function do_rename($attachment_id=0) {
          //Check user capability
          self::auth();
+         if(!$attachment_id) return;
 
          global $wpdb;
          $sql_bulk_update ='';
-         $attachment_id = intval($_POST['id']);
-
 
          if ( isset( $_REQUEST['attachments'][ $attachment_id ]['filename'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['filename'])) ) {
-             $ext = self::get('',$attachment_id)->extension;
-             $filename = $_REQUEST['attachments'][ $attachment_id ]['filename'].'.'.$ext;
-             $filename = self::sanitize($filename);
-             $name = pathinfo($filename)['filename'];
-             $filename = wp_unique_filename( self::get('',$attachment_id)->basepath, $filename );
 
-             if(rename(self::get('',$attachment_id, true)->basepath, self::get($filename , $attachment_id, false )->basepath )){
-                 if ( wp_attachment_is_image( $attachment_id ) ) {
-                     $metadata = get_post_meta($attachment_id, '_wp_attachment_metadata', true);
-                     if($metadata){
-                         if($metadata['file']){
-                             $metadata['file']= self::get($filename, $attachment_id, false )->basedir;
-                         }
-                         if($metadata['sizes']){
-                             foreach($metadata['sizes'] as $index => $key){
-                                 $new_file_name = str_ireplace(self::get('',$attachment_id)->filename, $name,  $key['file']);
-                                 $metadata['sizes'][$index]['file']= $new_file_name;
-                                 @rename( self::get($key['file'], $attachment_id, false)->basepath, self::get( $new_file_name, $attachment_id, false)->basepath );
-                             }
-                         }
-                     }
-                 }
+             $path = get_post_meta( $attachment_id , '_wp_attached_file', true );
+             $path_info = pathinfo($path);
 
-                 $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-                 $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-                 $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-                 $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-                 $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
-                 $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, %s, %s);", self::get('',$attachment_id, true)->basedir, self::get($filename, $attachment_id, false)->basedir );
+             $ext = $path_info['extension'];
+             $basedir =  dirname($path);
+             $basepath = trailingslashit(realpath(wp_upload_dir()['basedir'])).$basedir;
+             $baseurl = trailingslashit(wp_upload_dir()['baseurl']).$basedir;
 
-                 if(isset($metadata)){
-                     update_post_meta( $attachment_id, '_wp_attachment_metadata', $metadata );
-                     update_post_meta( $attachment_id, '_wp_attached_file', self::get( $filename, $attachment_id, false )->basedir );
-                 }
-                 $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.guid = %s WHERE t1.ID='{$attachment_id}';", self::get( $filename, $attachment_id, false )->baseurl );
+             $old_file_name = $path_info['filename'];
+             $old_file_basename = $path_info['basename'];
+             $old_file_basepath = trailingslashit($basepath).$old_file_basename;
+             $old_file_basedir =trailingslashit($basedir).$old_file_basename;
+
+             $filename = self::sanitize($_REQUEST['attachments'][ $attachment_id ]['filename'].'.'.$ext);
+
+             if($old_file_basename == $filename){
+                 return;
              }
-         }
-         if ( isset( $_REQUEST['attachments'][ $attachment_id ]['postname'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['postname'])) ) {
-             $ext = self::get('',$attachment_id)->extension;
-             $postname = $_REQUEST['attachments'][ $attachment_id ]['postname'].'.'.$ext;
-             $postname = self::sanitize($postname, false);
-             $postname = wp_unique_post_slug($postname, $attachment_id, 'publish', 'attachment', get_post($attachment_id)->post_parent);
-             $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_name = %s WHERE t1.ID={$attachment_id};", $postname);
-         }
+
+             $basename = wp_unique_filename( $basepath, $filename );
+
+             $new_file_name = pathinfo($basename)['filename'];
+             $new_file_basename =  pathinfo($basename)['basename'];
+             $new_file_basepath = trailingslashit($basepath).$new_file_basename;
+             $new_file_basedir = trailingslashit($basedir).$new_file_basename;
+             $new_file_baseurl= trailingslashit($baseurl).$new_file_basename;
+
+            if(rename($old_file_basepath, $new_file_basepath) ){
+                if ( wp_attachment_is_image( $attachment_id ) ) {
+                    $metadata = get_post_meta($attachment_id, '_wp_attachment_metadata', true);
+                    if($metadata){
+                        if($metadata['file']){
+                            $metadata['file']= $new_file_basedir;
+                        }
+                        if($metadata['sizes']){
+                            foreach($metadata['sizes'] as $index => $key){
+                                $new_file_name_sizes = str_ireplace($old_file_name, $new_file_name,  $key['file']);
+                                $metadata['sizes'][$index]['file']= $new_file_name_sizes;
+                                $new_file_name_sizes_basepath = trailingslashit($basepath).$new_file_name_sizes;
+                                $old_file_name_sizes_basepath = trailingslashit($basepath).$key['file'];
+                                @rename( $old_file_name_sizes_basepath, $new_file_name_sizes_basepath );
+                            }
+                        }
+                    }
+                }
+
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_content = replace(t1.post_content, %s, %s);", $old_file_basedir, $new_file_basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}comments as t1 SET t1.comment_content = replace(t1.comment_content, %s, %s);", $old_file_basedir, $new_file_basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_url = replace(t1.link_url, %s, %s);", $old_file_basedir, $new_file_basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_image = replace(t1.link_image, %s, %s);", $old_file_basedir, $new_file_basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}links as t1 SET t1.link_target = replace(t1.link_target, %s, %s);", $old_file_basedir, $new_file_basedir );
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}options as t1 SET t1.option_value = replace(t1.option_value, %s, %s);", $old_file_basedir, $new_file_basedir );
+
+                if(isset($metadata)){
+                    update_post_meta( $attachment_id, '_wp_attachment_metadata', $metadata );
+                    update_post_meta( $attachment_id, '_wp_attached_file', $new_file_basedir );
+                }
+                $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.guid = %s WHERE t1.ID='{$attachment_id}';", $new_file_baseurl );
+            }
+        }
          dbDelta( $sql_bulk_update );
-        clean_post_cache( $attachment_id );
+         clean_post_cache( $attachment_id );
+    }
+
+    public static function do_update_slug($attachment_id=0) {
+        //Check user capability
+        self::auth();
+        if(!$attachment_id) return;
+
+        global $wpdb;
+        $sql_bulk_update ='';
+
+        if ( isset( $_REQUEST['attachments'][ $attachment_id ]['postname'] ) && !empty(trim($_REQUEST['attachments'][ $attachment_id ]['postname'])) ) {
+            $path = get_post_meta( $attachment_id , '_wp_attached_file', true );
+            $path_info = pathinfo($path);
+            $ext = $path_info['extension'];
+            $postname = self::sanitize($_REQUEST['attachments'][ $attachment_id ]['postname'].'.'.$ext, false);
+
+            if(get_post($attachment_id)->post_name == $postname){
+                return;
+            }
+
+            $postname = wp_unique_post_slug($postname, $attachment_id, get_post($attachment_id)->post_status, get_post($attachment_id)->post_type, get_post($attachment_id)->post_parent);
+            $sql_bulk_update .= $wpdb->prepare("UPDATE {$wpdb->prefix}posts as t1 SET t1.post_name = %s WHERE t1.ID={$attachment_id};", $postname);
+        }
+         dbDelta( $sql_bulk_update );
+         clean_post_cache( $attachment_id );
     }
     public function prepare( $post, $attachment ) {
        /**
@@ -398,19 +371,13 @@ class File_Media_Renamer{
        $file = pathinfo($filename);
        $ext = $file['extension'];
        $name = $file['filename'];
-       $name = str_replace("%", "", $name);
-       $name = preg_replace( '%[^a-z0-9- ]%smiU', ' ', $name );
-       $name = preg_replace( '%\s*[-_\s\%]+\s*%', ' ',  $name );
-       $name = preg_replace( '%\s{1,}+%', '-', $name );
-       /* Trim spaces in the start and end of string */
-       $name = trim($name);
+       $name = preg_replace( '%[^\w]%smiU', ' ', $name ); //remover any nonword characters
+       $name = preg_replace( '%\s*[-_\s\%]+\s*%', ' ',  $name ); //replace multiple spaces with single spaces
+       $name = trim($name); /* Trim spaces in the start and end of string */
+       $name = preg_replace( '%\s{1,}+%', '-', $name ); //replace sigle spaces with hypen
+
        $fullname = $name.'.'.$ext;
 
-       if ( !function_exists( 'sanitize_file_name' ) ) {
-           require_once ABSPATH . WPINC . '/formatting.php';
-       }
-
-       $fullname = sanitize_file_name($fullname);
        if($full){
          return $fullname;
        }else{
