@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       File Media Renamer
- * Plugin URI:        http://wordpress.org/plugins/media-filename-renamer/
+ * Plugin URI:        http://wordpress.org/plugins/file-media-renamer/
  * Description:       This plugin allows you rename uploaded files available in wordpress media and change the postname or slug name.
  * Version:           1.1
  * Requires at least: 4.6
