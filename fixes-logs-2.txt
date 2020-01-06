@@ -1,8 +1,0 @@
-## Generic function (and/or define) names
-
-
-Before:
-    > file-media-renamer-master/file-media-renamer.php:29:class WP_PLUGIN_MAIN_12132019{
-
-After:
-    > file-media-renamer-master/file-media-renamer.php:29:class FRM_12132019{

@@ -31,15 +31,35 @@ e.g.
 
 = What filetypes can it rename?  =
 
-All filtypes as long as it appears in the media lists.
+All file types as long as it appears in the media lists.
 
-= What happens to the parent post or attachment page of the renamed files? =
+= What happens to the parent post or attachment page content where the file name was attached, if the file was renamed? =
 
-It will also be updated, it will be replaced with the new filenames.
+Its content will also be updated, it will be replaced the source url with the new filename.
 
 = What else does it do? =
 
 It updates the file meta, and other common tables associated with the file.
+
+= What are its limitations? =
+
+It cannot update src url of the manually hardcoded files or static call of file.
+Here are some examples
+> The static call for css background-image style, if it is called inside the style.css
+> Hardcoded call for image, when they call an image using the src attribute and not generate it using its ID from the database.
+    • Themes
+    • Plugins
+> Uncommon tables, this plugin does not check all the tables. It only update the most common tables
+    • post
+    • postmeta
+    • links
+    • options
+    • comments
+
+> You can send your feedback or request to add support for some tables or plugin tables.
+
+Please check <a target="_blank" href="http://wordpress.org/plugins/image-tag-manager/">Image Tag Manager</a> also.
+
 
 == Screenshots ==
 
